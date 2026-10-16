@@ -4,7 +4,9 @@ import { Suspense } from "react";
 export default function SignUpPage() {
   return (
     <Suspense fallback={null}>
-      <SignUp />
+      <div className="flex min-h-screen items-center justify-center py-6 ">
+        <SignUp signInUrl="/sign-in" signInFallbackRedirectUrl="/" />
+      </div>
     </Suspense>
   );
 }
