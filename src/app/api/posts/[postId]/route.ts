@@ -1,6 +1,8 @@
 import { db } from "@/db";
-import { comments, likes, posts, users } from "@/db/schema";
+import { comments, likes, postMedia, posts, users } from "@/db/schema";
+import { neonStorage } from "@/lib/neonStorage";
 import { requireAuth } from "@/lib/requireAuth";
+import { DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { and, count, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
@@ -58,24 +60,27 @@ export async function DELETE({
   try {
     const { postId } = await params;
 
-    //authentication
     const { clerkId } = await requireAuth();
+
     const [user] = await db
       .select()
       .from(users)
       .where(eq(users.clerkId, clerkId));
-    if (!user)
+
+    if (!user) {
       return NextResponse.json(
-        { success: false, message: "User not Found" },
+        { success: false, message: "User not found" },
         { status: 404 },
       );
+    }
 
-    const [deletedPost] = await db
-      .delete(posts)
-      .where(and(eq(posts.id, postId), eq(posts.userId, user.id)))
-      .returning({ id: posts.id });
+    // Check ownership
+    const [post] = await db
+      .select()
+      .from(posts)
+      .where(and(eq(posts.id, postId), eq(posts.userId, user.id)));
 
-    if (!deletedPost) {
+    if (!post) {
       return NextResponse.json(
         {
           success: false,
@@ -85,22 +90,50 @@ export async function DELETE({
       );
     }
 
+    // Get media belonging to post
+    const media = await db
+      .select({
+        storageKey: postMedia.storageKey,
+      })
+      .from(postMedia)
+      .where(eq(postMedia.postId, postId));
+
+    // Delete images from bucket
+    if (media.length > 0) {
+      await neonStorage.send(
+        new DeleteObjectsCommand({
+          Bucket: "instagram-images",
+          Delete: {
+            Objects: media.map((item) => ({
+              Key: item.storageKey,
+            })),
+          },
+        }),
+      );
+    }
+
+    // Delete post from database
+    await db.delete(posts).where(eq(posts.id, postId));
+
     return NextResponse.json(
       {
         success: true,
         message: "Post deleted successfully",
-        deletedPost: deletedPost.id,
       },
       { status: 200 },
     );
   } catch (error) {
+    console.error("Delete post error:", error);
+
     return NextResponse.json(
-      { success: false, message: "Internal Server Error", error },
+      {
+        success: false,
+        message: "Internal Server Error",
+      },
       { status: 500 },
     );
   }
 }
-
 // update post caption
 export async function PATCH(
   req: Request,
