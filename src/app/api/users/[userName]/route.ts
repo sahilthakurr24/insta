@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { follows, postMedia, posts, users } from "@/db/schema";
+import { auth } from "@clerk/nextjs/server";
 import { count, desc, eq, inArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -10,7 +11,7 @@ export async function GET(
 ) {
   try {
     const { username } = await params;
-
+    const { userId } = await auth();
     const limit = Number(req.nextUrl.searchParams.get("limit")) || 12;
     const page = Number(req.nextUrl.searchParams.get("page")) || 1;
     const offset = (page - 1) * limit;
@@ -47,6 +48,16 @@ export async function GET(
         { status: 404 },
       );
     }
+
+    //check if its own profile or not
+    let currentUser = null;
+    if (userId) {
+      [currentUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.clerkId, userId));
+    }
+    const isOwnProfile = currentUser ? currentUser.clerkId === user.id : false;
 
     //get followers, following and posts count
     const [[followersResult], [followingResult], [postsResult]] =
@@ -116,6 +127,7 @@ export async function GET(
           totalPosts,
         },
         posts: formattedPosts,
+        isOwnProfile,
         pagination: {
           page,
           limit,
