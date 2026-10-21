@@ -10,31 +10,48 @@ import { NextResponse } from "next/server";
 export async function GET({ params }: { params: Promise<{ postId: string }> }) {
   try {
     const { postId } = await params;
+
+    //get post
     const [post] = await db
       .select()
       .from(posts)
       .where(eq(posts.id, postId))
       .innerJoin(users, eq(posts.userId, users.id));
 
+    //get likes
     const [like] = await db
       .select({ count: count() })
       .from(likes)
       .where(eq(likes.postId, postId));
 
+    //get comments
     const allComments = await db
       .select()
       .from(comments)
       .where(eq(comments.postId, postId))
       .innerJoin(users, eq(comments.userId, users.id));
+
     if (!post)
       return NextResponse.json(
         { success: false, message: "No post found" },
         { status: 400 },
       );
 
+    //get pictures of the post
+    const media = await db
+      .select()
+      .from(postMedia)
+      .where(eq(postMedia.postId, postId));
+    if (media.length === 0)
+      return NextResponse.json(
+        { success: false, message: "This post has no media" },
+        { status: 404 },
+      );
+
     const formatedPost = {
       author: post.users.name,
       caption: post.posts.caption,
+      media: media,
       likes: like.count,
       comments: allComments,
     };
