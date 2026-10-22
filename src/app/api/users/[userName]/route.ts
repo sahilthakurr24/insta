@@ -7,10 +7,12 @@ import { NextRequest, NextResponse } from "next/server";
 //get public user profile
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ username: string }> },
+  { params }: { params: Promise<{ userName: string }> },
 ) {
   try {
-    const { username } = await params;
+    const { userName } = await params;
+    console.log(userName);
+    //clerk auth
     const { userId } = await auth();
     const limit = Number(req.nextUrl.searchParams.get("limit")) || 12;
     const page = Number(req.nextUrl.searchParams.get("page")) || 1;
@@ -37,13 +39,13 @@ export async function GET(
         createdAt: users.createdAt,
       })
       .from(users)
-      .where(eq(users.username, username));
+      .where(eq(users.username, userName));
 
     if (!user) {
       return NextResponse.json(
         {
           success: false,
-          message: `User not found with username: ${username}`,
+          message: `User not found with username: ${userName}`,
         },
         { status: 404 },
       );
