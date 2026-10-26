@@ -5,6 +5,7 @@ import {
   varchar,
   text,
   timestamp,
+  boolean,
 } from "drizzle-orm/pg-core";
 
 export const users = pgTable(
@@ -19,6 +20,8 @@ export const users = pgTable(
     name: varchar("name", { length: 100 }),
 
     bio: varchar("bio", { length: 160 }),
+
+    isPrivate: boolean("is_private").default(false).notNull(),
 
     avatarKey: text("avatar_key"),
 
