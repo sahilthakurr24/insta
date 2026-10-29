@@ -3,7 +3,7 @@ import { postMedia, posts, users } from "@/db/schema";
 import { requireAuth } from "@/lib/requireAuth";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { neonStorage } from "@/lib/neonStorage";
 import sharp from "sharp";
 
@@ -20,6 +20,7 @@ type MediaData = {
 
 // create post
 export async function POST(req: NextRequest) {
+  let key: string | null = null;
   try {
     // Authenticate user
     const { clerkId } = await requireAuth();
@@ -140,7 +141,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Generate storage key
-      const key = `posts/${crypto.randomUUID()}-${image.name}`;
+      key = `posts/${crypto.randomUUID()}-${image.name}`;
 
       // Upload image
       await neonStorage.send(
@@ -211,6 +212,19 @@ export async function POST(req: NextRequest) {
     );
   } catch (error) {
     console.error("Create post error:", error);
+    // remove uploaded image if database operation failed
+    if (key) {
+      try {
+        await neonStorage.send(
+          new DeleteObjectCommand({
+            Bucket: "instagram-images",
+            Key: key,
+          }),
+        );
+      } catch (deleteError) {
+        console.error("DELETE_ORPHANED_GROUP_IMAGE_ERROR:", deleteError);
+      }
+    }
 
     return NextResponse.json(
       {
