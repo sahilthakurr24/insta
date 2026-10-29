@@ -9,3 +9,4 @@ export * from "./saved-posts";
 export * from "./hashtags";
 export * from "./post-hashtags";
 export * from "./notifications";
+export * from "./message";
