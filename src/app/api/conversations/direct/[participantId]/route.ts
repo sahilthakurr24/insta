@@ -4,7 +4,7 @@ import { requireAuth } from "@/lib/requireAuth";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-//create converstaiion (direct)
+//create conversation (direct)
 export async function POST({
   params,
 }: {
