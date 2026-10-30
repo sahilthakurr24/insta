@@ -6,7 +6,7 @@ export default function SignUpPage() {
   return (
     <Suspense fallback={null}>
       <div className="flex min-h-screen items-center justify-center py-6 ">
-        <SignUp signInUrl="/sign-in" signInFallbackRedirectUrl="/" />
+        <SignUp signInUrl="/sign-in" forceRedirectUrl="/" />
       </div>
     </Suspense>
   );
